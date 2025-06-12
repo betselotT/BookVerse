@@ -28,30 +28,30 @@ export default function Home() {
     {
       id: 1,
       title: "The Silent Echo",
-      author: "Maya Rivers",
+      author: "J.R. Rain",
       rating: 4.7,
-      cover: "/placeholder.svg?height=300&width=200",
+      cover: "/The_Silent_Echo.png",
     },
     {
       id: 2,
-      title: "Beyond the Horizon",
-      author: "James Carter",
+      title: "Beyond The Horizon",
+      author: "K.J. Cloutier",
       rating: 4.5,
-      cover: "/placeholder.svg?height=300&width=200",
+      cover: "/Beyond_the_Horizon.png",
     },
     {
       id: 3,
       title: "Whispers in the Dark",
-      author: "Elena Frost",
+      author: "Conner Lindell",
       rating: 4.8,
-      cover: "/placeholder.svg?height=300&width=200",
+      cover: "/Whispers_in_the_Dark.png",
     },
     {
       id: 4,
       title: "The Last Journey",
-      author: "Thomas Wright",
+      author: "John L. Bell",
       rating: 4.6,
-      cover: "/placeholder.svg?height=300&width=200",
+      cover: "/The_Last_Journey.png",
     },
   ];
 
@@ -255,10 +255,10 @@ export default function Home() {
                     <Input
                       type="search"
                       placeholder="Search by title, author, or ISBN"
-                      className="pl-12 h-12 bg-white border-2 border-gray-200 focus:border-orange-400 rounded-xl shadow-sm hover:shadow-md transition-all duration-300"
+                      className="pl-12 h-12 bg-white border-2 border-gray-200 focus:border-orange-400 rounded-xl shadow-sm hover:shadow-md transition-all duration-300 text-black"
                     />
                   </div>
-                  <Button className="h-12 px-8 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105">
+                  <Button className="h-12 cursor-pointer px-8 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105">
                     Search
                   </Button>
                 </div>
@@ -335,18 +335,18 @@ export default function Home() {
                       height={300}
                       className="object-cover w-full h-full transition-transform duration-500 group-hover:scale-110"
                     />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 transition-opacity duration-300"></div>
                   </div>
                   <div className="mt-4 space-y-2">
-                    <h3 className="font-semibold text-sm sm:text-base text-gray-900 group-hover:text-orange-600 transition-colors duration-300">
+                    <h3 className="font-semibold text-sm sm:text-base text-gray-900 group-hover:text-orange-800 transition-colors duration-300">
                       {book.title}
                     </h3>
-                    <p className="text-gray-500 text-xs sm:text-sm">
+                    <p className="text-gray-500 text-xs sm:text-sm group-hover:text-orange-800">
                       {book.author}
                     </p>
                     <div className="flex items-center">
                       <Star className="h-4 w-4 fill-orange-400 text-orange-400" />
-                      <span className="text-sm ml-1 font-medium text-gray-700">
+                      <span className="text-sm ml-1 font-medium text-gray-700 group-hover:text-orange-800">
                         {book.rating}
                       </span>
                     </div>
@@ -385,7 +385,7 @@ export default function Home() {
             <div className="mt-12 text-center animate-in slide-in-from-bottom duration-500 delay-500">
               <Button
                 variant="outline"
-                className="border-2 border-orange-300 text-orange-600 hover:bg-orange-50 hover:border-orange-400 px-8 py-3 rounded-xl transition-all duration-300 hover:scale-105"
+                className="border-2 border-orange-300 text-orange-600 hover:bg-orange-50 hover:border-orange-400 hover:text-orange-500 px-8 py-3 rounded-xl transition-all duration-300 hover:scale-115 cursor-pointer"
               >
                 View All Categories
               </Button>
