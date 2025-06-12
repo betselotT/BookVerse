@@ -92,7 +92,7 @@ export default function Home() {
   return (
     <div className="flex min-h-screen flex-col">
       {/* Navbar */}
-      <header className="sticky top-0 z-50 w-full border-b bg-white/95 backdrop-blur-md shadow-sm animate-in slide-in-from-top duration-300">
+      <header className="sticky top-0 z-50 w-full border-b bg-white/95 backdrop-blur-md shadow-sm animate-in slide-in-from-top duration-300 pl-5 lg:pl-30">
         <div className="container flex h-16 items-center justify-between">
           <div className="flex items-center gap-2">
             <Link href="/" className="flex items-center group">
@@ -143,7 +143,7 @@ export default function Home() {
               <Button
                 variant="outline"
                 size="sm"
-                className="flex items-center gap-2 border-orange-200 text-orange-600 hover:bg-orange-50 hover:border-orange-300 transition-all duration-300 hover:scale-105"
+                className="flex cursor-pointer items-center gap-2 border-orange-200 text-orange-600 transition-all duration-300 hover:scale-105 hover:text-orange-500 hover:bg-orange-400"
               >
                 <LogIn className="h-4 w-4" />
                 <span>Login</span>
@@ -152,7 +152,7 @@ export default function Home() {
             <Link href="/sign-up">
               <Button
                 size="sm"
-                className="flex items-center gap-2 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105"
+                className="flex cursor-pointer items-center gap-2 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105"
               >
                 <UserPlus className="h-4 w-4" />
                 <span>Sign Up</span>
@@ -232,7 +232,7 @@ export default function Home() {
         {/* Hero Section */}
         <section
           id="browse"
-          className="relative py-20 bg-gradient-to-br from-orange-50 via-white to-orange-100 overflow-hidden"
+          className="relative py-20 bg-gradient-to-br from-orange-50 via-white to-orange-100 overflow-hidden pl-5 lg:pl-30"
         >
           <div className="absolute inset-0 bg-[url('data:image/svg+xml,%3Csvg%20width%3D%2260%22%20height%3D%2260%22%20viewBox%3D%220%200%2060%2060%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Cg%20fill%3D%22none%22%20fillRule%3D%22evenodd%22%3E%3Cg%20fill%3D%22%23f97316%22%20fillOpacity%3D%220.05%22%3E%3Ccircle%20cx%3D%2230%22%20cy%3D%2230%22%20r%3D%222%22%2F%3E%3C%2Fg%3E%3C%2Fg%3E%3C%2Fsvg%3E')] opacity-50"></div>
           <div className="container px-4 md:px-6 relative">
@@ -306,7 +306,7 @@ export default function Home() {
         </section>
 
         {/* Featured Books */}
-        <section className="py-20 bg-white">
+        <section className="py-20 bg-white pl-5 lg:pl-30">
           <div className="container px-4 md:px-6">
             <div className="flex items-center justify-between mb-12 animate-in slide-in-from-top duration-500">
               <h2 className="text-3xl font-bold text-gray-900">
@@ -360,7 +360,7 @@ export default function Home() {
         {/* Categories Section */}
         <section
           id="categories"
-          className="py-20 bg-gradient-to-br from-orange-50 to-white"
+          className="py-20 bg-gradient-to-br from-orange-50 to-white pl-5 lg:pl-30"
         >
           <div className="container px-4 md:px-6">
             <h2 className="text-3xl font-bold mb-12 text-center text-gray-900 animate-in slide-in-from-top duration-500">
@@ -394,7 +394,7 @@ export default function Home() {
         </section>
 
         {/* New Releases */}
-        <section id="new-releases" className="py-20 bg-white">
+        <section id="new-releases" className="py-20 bg-white pl-5 lg:pl-30">
           <div className="container px-4 md:px-6">
             <div className="flex items-center justify-between mb-12 animate-in slide-in-from-top duration-500">
               <h2 className="text-3xl font-bold text-gray-900">New Releases</h2>
@@ -443,7 +443,7 @@ export default function Home() {
         {/* About Section */}
         <section
           id="about"
-          className="py-20 bg-gradient-to-br from-gray-900 via-gray-800 to-orange-900 text-white relative overflow-hidden"
+          className="py-20 bg-gradient-to-br from-gray-900 via-gray-800 to-orange-900 text-white relative overflow-hidden pl-5 lg:pl-30"
         >
           <div className="absolute inset-0 bg-[url('data:image/svg+xml,%3Csvg%20width%3D%2260%22%20height%3D%2260%22%20viewBox%3D%220%200%2060%2060%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Cg%20fill%3D%22none%22%20fillRule%3D%22evenodd%22%3E%3Cg%20fill%3D%22%23f97316%22%20fillOpacity%3D%220.1%22%3E%3Ccircle%20cx%3D%2230%22%20cy%3D%2230%22%20r%3D%221%22%2F%3E%3C%2Fg%3E%3C%2Fg%3E%3C%2Fsvg%3E')] opacity-50"></div>
           <div className="container px-4 md:px-6 relative">
@@ -503,7 +503,7 @@ export default function Home() {
           </div>
         </section>
 
-        {/* Newsletter Section */}
+        {/* Newsletter Section
         <section className="py-16 bg-gradient-to-r from-orange-500 to-orange-600 text-white relative overflow-hidden">
           <div className="absolute inset-0 bg-[url('data:image/svg+xml,%3Csvg%20width%3D%2240%22%20height%3D%2240%22%20viewBox%3D%220%200%2040%2040%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Cg%20fill%3D%22none%22%20fillRule%3D%22evenodd%22%3E%3Cg%20fill%3D%22%23ffffff%22%20fillOpacity%3D%220.1%22%3E%3Ccircle%20cx%3D%2220%22%20cy%3D%2220%22%20r%3D%221%22%2F%3E%3C%2Fg%3E%3C%2Fg%3E%3C%2Fsvg%3E')] opacity-50"></div>
           <div className="container px-4 md:px-6 relative">
@@ -527,11 +527,11 @@ export default function Home() {
               </div>
             </div>
           </div>
-        </section>
+        </section> */}
       </main>
 
       {/* Footer */}
-      <footer className="bg-gray-900 text-white py-16">
+      <footer className="bg-gray-900 text-white py-16 pl-5 lg:pl-30">
         <div className="container px-4 md:px-6">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mb-12">
             <div className="col-span-2 md:col-span-1">
