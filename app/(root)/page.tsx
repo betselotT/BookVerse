@@ -267,7 +267,7 @@ export default function Home() {
                 <div className="absolute top-0 right-0 -rotate-6 transform hover:rotate-0 transition-transform duration-500 hover:scale-105">
                   <div className="relative">
                     <Image
-                      src="/placeholder.svg?height=350&width=230"
+                      src="/it_ends_with_us.png"
                       alt="Featured Book"
                       width={230}
                       height={350}
@@ -279,7 +279,7 @@ export default function Home() {
                 <div className="absolute top-16 right-48 rotate-6 transform hover:rotate-0 transition-transform duration-500 hover:scale-105 delay-100">
                   <div className="relative">
                     <Image
-                      src="/placeholder.svg?height=350&width=230"
+                      src="/harry_potter.png"
                       alt="Featured Book"
                       width={230}
                       height={350}
@@ -291,7 +291,7 @@ export default function Home() {
                 <div className="absolute top-32 right-24 -rotate-3 transform hover:rotate-0 transition-transform duration-500 hover:scale-105 delay-200">
                   <div className="relative">
                     <Image
-                      src="/placeholder.svg?height=350&width=230"
+                      src="/got.png"
                       alt="Featured Book"
                       width={230}
                       height={350}
