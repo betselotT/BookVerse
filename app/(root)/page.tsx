@@ -66,26 +66,26 @@ export default function Home() {
     {
       id: 5,
       title: "Midnight Shadows",
-      author: "Sarah Blake",
-      cover: "/placeholder.svg?height=300&width=200",
+      author: "Nora Roberts",
+      cover: "/Midnight_Shadows.png",
     },
     {
       id: 6,
       title: "The Forgotten Path",
-      author: "Daniel Stone",
-      cover: "/placeholder.svg?height=300&width=200",
+      author: "E.A. Collins",
+      cover: "/The_Forgotten_Path.png",
     },
     {
       id: 7,
       title: "Echoes of Tomorrow",
-      author: "Olivia Green",
-      cover: "/placeholder.svg?height=300&width=200",
+      author: "Tamsyn Rivers",
+      cover: "/Echoes_of_Tomorrow.png",
     },
     {
       id: 8,
       title: "The Hidden Truth",
-      author: "Michael Ross",
-      cover: "/placeholder.svg?height=300&width=200",
+      author: "Redy Kushanto",
+      cover: "/The_Hidden_Truth.png",
     },
   ];
 
@@ -421,16 +421,16 @@ export default function Home() {
                       height={300}
                       className="object-cover w-full h-full transition-transform duration-500 group-hover:scale-110"
                     />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 transition-opacity duration-300"></div>
                     <div className="absolute top-3 right-3 bg-orange-500 text-white text-xs px-2 py-1 rounded-full font-medium">
                       New
                     </div>
                   </div>
                   <div className="mt-4 space-y-2">
-                    <h3 className="font-semibold text-sm sm:text-base text-gray-900 group-hover:text-orange-600 transition-colors duration-300">
+                    <h3 className="font-semibold text-sm sm:text-base text-gray-900 group-hover:text-orange-800 transition-colors duration-300">
                       {book.title}
                     </h3>
-                    <p className="text-gray-500 text-xs sm:text-sm">
+                    <p className="text-gray-500 text-xs sm:text-sm group-hover:text-orange-800">
                       {book.author}
                     </p>
                   </div>
@@ -491,7 +491,7 @@ export default function Home() {
               <div className="relative h-[400px] lg:h-[500px] flex items-center justify-center animate-in slide-in-from-right duration-700 delay-300">
                 <div className="relative w-[85%] h-[85%] rounded-2xl overflow-hidden shadow-2xl group">
                   <Image
-                    src="/placeholder.svg?height=400&width=600"
+                    src="/bookverse.png"
                     alt="BookVerse Library"
                     fill
                     className="object-cover transition-transform duration-700 group-hover:scale-110"
