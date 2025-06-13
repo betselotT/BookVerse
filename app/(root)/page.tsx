@@ -26,6 +26,7 @@ import {
 } from "@/components/ui/sheet";
 import { useEffect, useState, useCallback } from "react";
 import { Badge } from "@/components/ui/badge";
+import { useAuthNavigation } from "@/lib/auth-utils";
 
 // Define book types
 interface Book {
@@ -48,6 +49,9 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 8;
+
+  // Auth navigation hook
+  const { navigateToMyBooks, isLoggedIn } = useAuthNavigation();
 
   // Debounced search implementation with 500ms timer
   useEffect(() => {
@@ -81,6 +85,12 @@ export default function Home() {
       )}`;
       window.open(googleBooksUrl, "_blank");
     }
+  };
+
+  // Handle My Books navigation
+  const handleMyBooksClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    navigateToMyBooks();
   };
 
   // Fetch books from Google Books API
@@ -248,20 +258,13 @@ export default function Home() {
               Browse
               <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-orange-500 group-hover:w-full transition-all duration-300"></span>
             </Link>
-            <Link
-              href="#categories"
-              className="text-sm font-medium text-gray-700 hover:text-orange-500 transition-all duration-300 hover:scale-105 relative group"
+            <button
+              onClick={handleMyBooksClick}
+              className="text-sm font-medium text-gray-700 hover:text-orange-500 transition-all duration-300 hover:scale-105 relative group cursor-pointer"
             >
-              Categories
+              My Books
               <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-orange-500 group-hover:w-full transition-all duration-300"></span>
-            </Link>
-            <Link
-              href="#new-releases"
-              className="text-sm font-medium text-gray-700 hover:text-orange-500 transition-all duration-300 hover:scale-105 relative group"
-            >
-              New Releases
-              <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-orange-500 group-hover:w-full transition-all duration-300"></span>
-            </Link>
+            </button>
             <Link
               href="#about"
               className="text-sm font-medium text-gray-700 hover:text-orange-500 transition-all duration-300 hover:scale-105 relative group"
@@ -302,25 +305,37 @@ export default function Home() {
 
           {/* Auth Buttons - Desktop */}
           <div className="hidden md:flex items-center gap-4">
-            <Link href="/sign-in">
+            {isLoggedIn ? (
               <Button
-                variant="outline"
-                size="sm"
-                className="flex cursor-pointer items-center gap-2 border-orange-200 text-orange-600 transition-all duration-300 hover:scale-105 hover:text-orange-500 hover:bg-orange-50"
-              >
-                <LogIn className="h-4 w-4" />
-                <span>Login</span>
-              </Button>
-            </Link>
-            <Link href="/sign-up">
-              <Button
-                size="sm"
+                onClick={handleMyBooksClick}
                 className="flex cursor-pointer items-center gap-2 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105"
               >
-                <UserPlus className="h-4 w-4" />
-                <span>Sign Up</span>
+                <BookOpen className="h-4 w-4" />
+                <span>My Books</span>
               </Button>
-            </Link>
+            ) : (
+              <>
+                <Link href="/sign-in">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="flex cursor-pointer items-center gap-2 border-orange-200 text-orange-600 transition-all duration-300 hover:scale-105 hover:text-orange-500 hover:bg-orange-50"
+                  >
+                    <LogIn className="h-4 w-4" />
+                    <span>Login</span>
+                  </Button>
+                </Link>
+                <Link href="/sign-up">
+                  <Button
+                    size="sm"
+                    className="flex cursor-pointer items-center gap-2 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105"
+                  >
+                    <UserPlus className="h-4 w-4" />
+                    <span>Sign Up</span>
+                  </Button>
+                </Link>
+              </>
+            )}
           </div>
 
           {/* Mobile Menu */}
@@ -349,20 +364,12 @@ export default function Home() {
                   </Link>
                 </SheetClose>
                 <SheetClose asChild>
-                  <Link
-                    href="#categories"
-                    className="flex items-center py-3 text-lg font-medium text-gray-700 hover:text-orange-500 transition-colors duration-300 border-b border-gray-100"
+                  <button
+                    onClick={handleMyBooksClick}
+                    className="flex items-center py-3 text-lg font-medium text-gray-700 hover:text-orange-500 transition-colors duration-300 border-b border-gray-100 text-left cursor-pointer"
                   >
-                    Categories
-                  </Link>
-                </SheetClose>
-                <SheetClose asChild>
-                  <Link
-                    href="#new-releases"
-                    className="flex items-center py-3 text-lg font-medium text-gray-700 hover:text-orange-500 transition-colors duration-300 border-b border-gray-100"
-                  >
-                    New Releases
-                  </Link>
+                    My Books
+                  </button>
                 </SheetClose>
                 <SheetClose asChild>
                   <Link
@@ -551,27 +558,25 @@ export default function Home() {
                         </p>
 
                         {/* Book Details Section */}
-                        <div className="flex flex-wrap gap-2 mt-2">
-                          {/* Page Count */}
-                          {book.pageCount > 0 && (
+                        {typeof book.pageCount === "number" &&
+                          book.pageCount > 0 && (
                             <div className="flex items-center text-xs text-gray-600">
                               <Clock className="h-3 w-3 mr-1 text-orange-500" />
                               <span>{book.pageCount} pages</span>
                             </div>
                           )}
 
-                          {/* Rating */}
-                          {book.rating > 0 && (
-                            <div className="flex items-center text-xs text-gray-600">
-                              <Star className="h-3 w-3 mr-1 fill-orange-400 text-orange-400" />
-                              <span>
-                                {book.rating}{" "}
-                                {book.ratingsCount > 0 &&
-                                  `(${book.ratingsCount})`}
-                              </span>
-                            </div>
-                          )}
-                        </div>
+                        {typeof book.rating === "number" && book.rating > 0 && (
+                          <div className="flex items-center text-xs text-gray-600">
+                            <Star className="h-3 w-3 mr-1 fill-orange-400 text-orange-400" />
+                            <span>
+                              {book.rating}{" "}
+                              {book.ratingsCount &&
+                                book.ratingsCount > 0 &&
+                                `(${book.ratingsCount})`}
+                            </span>
+                          </div>
+                        )}
 
                         {/* Categories */}
                         {book.categories && book.categories.length > 0 && (
