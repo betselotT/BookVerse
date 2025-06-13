@@ -187,7 +187,7 @@ const AuthForm = ({ type }: { type: FormType }) => {
 
                     <Button
                       type="submit"
-                      className="w-full h-12 mt-2 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-[1.02] flex items-center justify-center gap-2"
+                      className="w-full h-12 mt-2 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-[1.02] flex items-center justify-center gap-2 cursor-pointer"
                     >
                       {isSignIn ? (
                         <>
@@ -204,7 +204,7 @@ const AuthForm = ({ type }: { type: FormType }) => {
                   </form>
                 </Form>
 
-                {/* Divider */}
+                {/* Divider
                 <div className="relative flex items-center justify-center my-6">
                   <div className="absolute inset-0 flex items-center">
                     <div className="w-full border-t border-gray-200"></div>
@@ -215,7 +215,7 @@ const AuthForm = ({ type }: { type: FormType }) => {
                 </div>
 
                 {/* Social login buttons */}
-                <div className="grid grid-cols-2 gap-4 mb-6">
+                {/* <div className="grid grid-cols-2 gap-4 mb-6">
                   <Button
                     variant="outline"
                     className="border-orange-200 text-gray-700 hover:bg-orange-50 hover:text-orange-600 transition-all duration-300"
@@ -228,7 +228,7 @@ const AuthForm = ({ type }: { type: FormType }) => {
                   >
                     Apple
                   </Button>
-                </div>
+                </div>  */}
 
                 {/* Sign in/up toggle */}
                 <p className="text-center text-gray-600">
