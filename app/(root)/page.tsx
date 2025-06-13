@@ -1,5 +1,7 @@
 "use client";
 
+import type React from "react";
+
 import Link from "next/link";
 import Image from "next/image";
 import {
@@ -9,9 +11,10 @@ import {
   LogIn,
   UserPlus,
   BookOpen,
-  BookText,
-  Award,
   Star,
+  Loader2,
+  BookText,
+  Clock,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -21,73 +24,204 @@ import {
   SheetTrigger,
   SheetClose,
 } from "@/components/ui/sheet";
+import { useEffect, useState, useCallback } from "react";
+import { Badge } from "@/components/ui/badge";
+
+// Define book types
+interface Book {
+  id: string;
+  title: string;
+  authors: string;
+  rating?: number;
+  ratingsCount?: number;
+  cover: string;
+  pageCount?: number;
+  categories?: string[];
+  dummy?: boolean;
+  infoLink?: string;
+}
 
 export default function Home() {
-  // Sample book data
+  const [searchTerm, setSearchTerm] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [books, setBooks] = useState<Book[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 8;
+
+  // Debounced search implementation with 500ms timer
+  useEffect(() => {
+    const debounceTimer = setTimeout(() => {
+      if (searchTerm) {
+        setSearchQuery(searchTerm);
+        setCurrentPage(1);
+      }
+    }, 500); // 500ms debounce (changed from 2000ms)
+
+    return () => clearTimeout(debounceTimer);
+  }, [searchTerm]);
+
+  // Handle search submission (for when user clicks the search button)
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setSearchQuery(searchTerm);
+    setCurrentPage(1);
+  };
+
+  // Handle book click to redirect to Google Books
+  const handleBookClick = (book: Book) => {
+    // If we have an infoLink from the API, use it directly
+    if (book.infoLink) {
+      window.open(book.infoLink, "_blank");
+    } else {
+      // Otherwise construct a search URL with the book title and author
+      const searchQuery = `${book.title} ${book.authors}`.trim();
+      const googleBooksUrl = `https://books.google.com/books?q=${encodeURIComponent(
+        searchQuery
+      )}`;
+      window.open(googleBooksUrl, "_blank");
+    }
+  };
+
+  // Fetch books from Google Books API
+  useEffect(() => {
+    const fetchBooks = async () => {
+      if (!searchQuery) {
+        // Don't fetch if there's no search query
+        return;
+      }
+
+      try {
+        setLoading(true);
+        const response = await fetch(
+          `https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(
+            searchQuery
+          )}&maxResults=35&key=${process.env.NEXT_PUBLIC_GOOGLE_BOOKS_API_KEY}`
+        );
+
+        if (!response.ok) throw new Error("Failed to fetch");
+        const data = await response.json();
+
+        const mappedBooks =
+          data.items?.map((item: any) => ({
+            id: item.id,
+            title: item.volumeInfo.title || "Untitled",
+            authors: item.volumeInfo.authors?.join(", ") || "Unknown Author",
+            rating: item.volumeInfo.averageRating || 0,
+            ratingsCount: item.volumeInfo.ratingsCount || 0,
+            pageCount: item.volumeInfo.pageCount || 0,
+            categories: item.volumeInfo.categories || [],
+            cover: item.volumeInfo.imageLinks?.thumbnail || "",
+            infoLink: item.volumeInfo.infoLink || "",
+          })) || [];
+
+        // Fill with dummy books if needed
+        let limitedBooks = mappedBooks.slice(0, 35);
+        if (limitedBooks.length < 35) {
+          const missingCount = 35 - limitedBooks.length;
+          const dummyBooks = Array.from({ length: missingCount }, (_, i) => ({
+            dummy: true,
+            id: `dummy-${i}`,
+            title: `Book ${i + 1}`,
+            authors: "Unknown Author",
+            cover: "",
+            pageCount: 0,
+            categories: [],
+          }));
+          limitedBooks = [...limitedBooks, ...dummyBooks];
+        }
+        setBooks(limitedBooks);
+      } catch (error) {
+        console.error(`Error Fetching Books`, error);
+        // Create dummy books on error
+        const dummyBooks = Array.from({ length: 35 }, (_, i) => ({
+          dummy: true,
+          id: `dummy-${i}`,
+          title: `Book ${i + 1}`,
+          authors: "Unknown Author",
+          cover: "",
+          pageCount: 0,
+          categories: [],
+        }));
+        setBooks(dummyBooks);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchBooks();
+  }, [searchQuery]);
+
+  // Generate placeholder image for books without covers
+  const getPlaceholder = useCallback((title: string) => {
+    const initials = title
+      .split(" ")
+      .slice(0, 3)
+      .map((word) => word[0]?.toUpperCase() || "")
+      .join("");
+
+    return `data:image/svg+xml;utf8,${encodeURIComponent(
+      `<svg xmlns="http://www.w3.org/2000/svg" width="600" height="900" viewBox="0 0 600 900">
+        <rect width="100%" height="100%" fill="#2D3748"/>
+        <text x="50%" y="50%" fill="#4A5568" fontFamily="monospace" fontSize="80" 
+              textAnchor="middle" dominantBaseline="middle">${initials}</text>
+      </svg>`
+    )}`;
+  }, []);
+
+  // Paginate books for display
+  const paginatedBooks = books.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+
+  // Sample featured books (fallback if no search)
   const featuredBooks = [
     {
-      id: 1,
+      id: "1",
       title: "The Silent Echo",
-      author: "J.R. Rain",
+      authors: "J.R. Rain",
       rating: 4.7,
+      ratingsCount: 120,
+      pageCount: 320,
+      categories: ["Fiction", "Mystery"],
       cover: "/The_Silent_Echo.png",
     },
     {
-      id: 2,
+      id: "2",
       title: "Beyond The Horizon",
-      author: "K.J. Cloutier",
+      authors: "K.J. Cloutier",
       rating: 4.5,
+      ratingsCount: 95,
+      pageCount: 280,
+      categories: ["Fiction", "Adventure"],
       cover: "/Beyond_the_Horizon.png",
     },
     {
-      id: 3,
+      id: "3",
       title: "Whispers in the Dark",
-      author: "Conner Lindell",
+      authors: "Conner Lindell",
       rating: 4.8,
+      ratingsCount: 150,
+      pageCount: 350,
+      categories: ["Fiction", "Horror"],
       cover: "/Whispers_in_the_Dark.png",
     },
     {
-      id: 4,
+      id: "4",
       title: "The Last Journey",
-      author: "John L. Bell",
+      authors: "John L. Bell",
       rating: 4.6,
+      ratingsCount: 110,
+      pageCount: 300,
+      categories: ["Fiction", "Adventure"],
       cover: "/The_Last_Journey.png",
     },
   ];
 
-  const popularCategories = [
-    { name: "Fiction", icon: <BookText className="h-6 w-6" /> },
-    { name: "Non-Fiction", icon: <BookOpen className="h-6 w-6" /> },
-    { name: "Award Winners", icon: <Award className="h-6 w-6" /> },
-    { name: "Bestsellers", icon: <Star className="h-6 w-6" /> },
-  ];
-
-  const newReleases = [
-    {
-      id: 5,
-      title: "Midnight Shadows",
-      author: "Nora Roberts",
-      cover: "/Midnight_Shadows.png",
-    },
-    {
-      id: 6,
-      title: "The Forgotten Path",
-      author: "E.A. Collins",
-      cover: "/The_Forgotten_Path.png",
-    },
-    {
-      id: 7,
-      title: "Echoes of Tomorrow",
-      author: "Tamsyn Rivers",
-      cover: "/Echoes_of_Tomorrow.png",
-    },
-    {
-      id: 8,
-      title: "The Hidden Truth",
-      author: "Redy Kushanto",
-      cover: "/The_Hidden_Truth.png",
-    },
-  ];
+  // Books to display - either API results or featured books
+  const displayBooks =
+    searchQuery && paginatedBooks.length > 0 ? paginatedBooks : featuredBooks;
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -135,6 +269,35 @@ export default function Home() {
               About
               <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-orange-500 group-hover:w-full transition-all duration-300"></span>
             </Link>
+            <form
+              onSubmit={handleSubmit}
+              className="flex flex-col sm:flex-row gap-4 pl-10"
+            >
+              <div className="relative flex-1 group">
+                <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400 group-focus-within:text-orange-500 transition-colors duration-300" />
+                <Input
+                  type="search"
+                  placeholder="Search by title, author, or ISBN"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-12 h-8 bg-white border-2 border-gray-200 focus:border-orange-400 rounded-xl shadow-sm hover:shadow-md transition-all duration-300 text-black"
+                />
+              </div>
+              <Button
+                type="submit"
+                className="h-8 cursor-pointer px-8 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105"
+                disabled={loading}
+              >
+                {loading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Searching...
+                  </>
+                ) : (
+                  "Search"
+                )}
+              </Button>
+            </form>
           </nav>
 
           {/* Auth Buttons - Desktop */}
@@ -143,7 +306,7 @@ export default function Home() {
               <Button
                 variant="outline"
                 size="sm"
-                className="flex cursor-pointer items-center gap-2 border-orange-200 text-orange-600 transition-all duration-300 hover:scale-105 hover:text-orange-500 hover:bg-orange-400"
+                className="flex cursor-pointer items-center gap-2 border-orange-200 text-orange-600 transition-all duration-300 hover:scale-105 hover:text-orange-500 hover:bg-orange-50"
               >
                 <LogIn className="h-4 w-4" />
                 <span>Login</span>
@@ -249,19 +412,35 @@ export default function Home() {
                   Explore thousands of books across all genres. Find your
                   perfect read today.
                 </p>
-                <div className="flex flex-col sm:flex-row gap-4 pt-4">
+                <form
+                  onSubmit={handleSubmit}
+                  className="flex flex-col sm:flex-row gap-4 pt-4"
+                >
                   <div className="relative flex-1 group">
                     <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400 group-focus-within:text-orange-500 transition-colors duration-300" />
                     <Input
                       type="search"
                       placeholder="Search by title, author, or ISBN"
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
                       className="pl-12 h-12 bg-white border-2 border-gray-200 focus:border-orange-400 rounded-xl shadow-sm hover:shadow-md transition-all duration-300 text-black"
                     />
                   </div>
-                  <Button className="h-12 cursor-pointer px-8 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105">
-                    Search
+                  <Button
+                    type="submit"
+                    className="h-12 cursor-pointer px-8 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105"
+                    disabled={loading}
+                  >
+                    {loading ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Searching...
+                      </>
+                    ) : (
+                      "Search"
+                    )}
                   </Button>
-                </div>
+                </form>
               </div>
               <div className="relative h-[400px] lg:h-[500px] animate-in slide-in-from-right duration-700 delay-300">
                 <div className="absolute top-0 right-0 -rotate-6 transform hover:rotate-0 transition-transform duration-500 hover:scale-105">
@@ -305,138 +484,155 @@ export default function Home() {
           </div>
         </section>
 
-        {/* Featured Books */}
+        {/* Featured Books / Search Results */}
         <section className="py-20 bg-white pl-5 lg:pl-30">
           <div className="container px-4 md:px-6">
             <div className="flex items-center justify-between mb-12 animate-in slide-in-from-top duration-500">
               <h2 className="text-3xl font-bold text-gray-900">
-                Featured Books
+                {searchQuery ? "Search Results" : "Featured Books"}
               </h2>
-              <Link
-                href="#"
-                className="text-orange-500 hover:text-orange-600 flex items-center group transition-colors duration-300"
-              >
-                View all
-                <ChevronRight className="h-4 w-4 ml-1 group-hover:translate-x-1 transition-transform duration-300" />
-              </Link>
-            </div>
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-8">
-              {featuredBooks.map((book, index) => (
-                <div
-                  key={book.id}
-                  className="group relative animate-in slide-in-from-bottom duration-500"
-                  style={{ animationDelay: `${index * 100}ms` }}
+              {!searchQuery && (
+                <Link
+                  href="#"
+                  className="text-orange-500 hover:text-orange-600 flex items-center group transition-colors duration-300"
                 >
-                  <div className="aspect-[2/3] overflow-hidden rounded-xl bg-gradient-to-br from-gray-100 to-gray-200 shadow-md group-hover:shadow-xl transition-all duration-500">
-                    <Image
-                      src={book.cover || "/placeholder.svg"}
-                      alt={book.title}
-                      width={200}
-                      height={300}
-                      className="object-cover w-full h-full transition-transform duration-500 group-hover:scale-110"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 transition-opacity duration-300"></div>
-                  </div>
-                  <div className="mt-4 space-y-2">
-                    <h3 className="font-semibold text-sm sm:text-base text-gray-900 group-hover:text-orange-800 transition-colors duration-300">
-                      {book.title}
-                    </h3>
-                    <p className="text-gray-500 text-xs sm:text-sm group-hover:text-orange-800">
-                      {book.author}
-                    </p>
-                    <div className="flex items-center">
-                      <Star className="h-4 w-4 fill-orange-400 text-orange-400" />
-                      <span className="text-sm ml-1 font-medium text-gray-700 group-hover:text-orange-800">
-                        {book.rating}
-                      </span>
+                  View all
+                  <ChevronRight className="h-4 w-4 ml-1 group-hover:translate-x-1 transition-transform duration-300" />
+                </Link>
+              )}
+            </div>
+
+            {loading ? (
+              <div className="flex justify-center items-center py-20">
+                <Loader2 className="h-12 w-12 text-orange-500 animate-spin" />
+              </div>
+            ) : (
+              <>
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8">
+                  {displayBooks.map((book, index) => (
+                    <div
+                      key={book.id}
+                      className="group relative animate-in slide-in-from-bottom duration-500 cursor-pointer"
+                      style={{ animationDelay: `${index * 100}ms` }}
+                      onClick={() => handleBookClick(book)}
+                    >
+                      <div className="aspect-[2/3] overflow-hidden rounded-xl bg-gradient-to-br from-gray-100 to-gray-200 shadow-md group-hover:shadow-xl transition-all duration-500">
+                        {book.cover ? (
+                          <Image
+                            src={book.cover || "/placeholder.svg"}
+                            alt={book.title}
+                            width={200}
+                            height={300}
+                            className="object-cover w-full h-full transition-transform duration-500 group-hover:scale-110"
+                            unoptimized={book.cover.includes(
+                              "books.google.com"
+                            )}
+                          />
+                        ) : (
+                          <div
+                            className="w-full h-full flex items-center justify-center bg-gray-200 text-gray-500 text-xl font-bold"
+                            style={{
+                              backgroundImage: `url(${getPlaceholder(
+                                book.title
+                              )})`,
+                              backgroundSize: "cover",
+                              backgroundPosition: "center",
+                            }}
+                          />
+                        )}
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 transition-opacity duration-300"></div>
+                      </div>
+                      <div className="mt-4 space-y-2">
+                        <h3 className="font-semibold text-sm sm:text-base text-gray-900 group-hover:text-orange-800 transition-colors duration-300 line-clamp-2">
+                          {book.title}
+                        </h3>
+                        <p className="text-gray-500 text-xs sm:text-sm group-hover:text-orange-800 line-clamp-1">
+                          {book.authors}
+                        </p>
+
+                        {/* Book Details Section */}
+                        <div className="flex flex-wrap gap-2 mt-2">
+                          {/* Page Count */}
+                          {book.pageCount > 0 && (
+                            <div className="flex items-center text-xs text-gray-600">
+                              <Clock className="h-3 w-3 mr-1 text-orange-500" />
+                              <span>{book.pageCount} pages</span>
+                            </div>
+                          )}
+
+                          {/* Rating */}
+                          {book.rating > 0 && (
+                            <div className="flex items-center text-xs text-gray-600">
+                              <Star className="h-3 w-3 mr-1 fill-orange-400 text-orange-400" />
+                              <span>
+                                {book.rating}{" "}
+                                {book.ratingsCount > 0 &&
+                                  `(${book.ratingsCount})`}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Categories */}
+                        {book.categories && book.categories.length > 0 && (
+                          <div className="flex flex-wrap gap-1 mt-2">
+                            {book.categories
+                              .slice(0, 2)
+                              .map((category, idx) => (
+                                <Badge
+                                  key={idx}
+                                  variant="outline"
+                                  className="text-xs bg-orange-50 text-orange-700 border-orange-200 hover:bg-orange-100"
+                                >
+                                  <BookText className="h-3 w-3 mr-1" />
+                                  {category}
+                                </Badge>
+                              ))}
+                            {book.categories.length > 2 && (
+                              <Badge
+                                variant="outline"
+                                className="text-xs bg-gray-50 text-gray-700 border-gray-200"
+                              >
+                                +{book.categories.length - 2}
+                              </Badge>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Pagination */}
+                {searchQuery && books.length > itemsPerPage && (
+                  <div className="flex justify-center mt-12">
+                    <div className="flex space-x-2">
+                      {Array.from(
+                        { length: Math.ceil(books.length / itemsPerPage) },
+                        (_, i) => i + 1
+                      )
+                        .slice(0, 5)
+                        .map((page) => (
+                          <Button
+                            key={page}
+                            onClick={() => setCurrentPage(page)}
+                            variant={
+                              currentPage === page ? "default" : "outline"
+                            }
+                            className={`w-10 h-10 p-0 ${
+                              currentPage === page
+                                ? "bg-orange-500 hover:bg-orange-600"
+                                : "text-orange-600 border-orange-200"
+                            }`}
+                          >
+                            {page}
+                          </Button>
+                        ))}
                     </div>
                   </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        {/* Categories Section */}
-        <section
-          id="categories"
-          className="py-20 bg-gradient-to-br from-orange-50 to-white pl-5 lg:pl-30"
-        >
-          <div className="container px-4 md:px-6">
-            <h2 className="text-3xl font-bold mb-12 text-center text-gray-900 animate-in slide-in-from-top duration-500">
-              Browse by Category
-            </h2>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-              {popularCategories.map((category, index) => (
-                <div
-                  key={index}
-                  className="group flex flex-col items-center justify-center p-8 bg-white rounded-2xl shadow-md hover:shadow-xl transition-all duration-500 border border-orange-100 hover:border-orange-200 cursor-pointer animate-in slide-in-from-bottom duration-500 hover:scale-105"
-                  style={{ animationDelay: `${index * 100}ms` }}
-                >
-                  <div className="p-4 bg-gradient-to-br from-orange-100 to-orange-200 rounded-2xl text-orange-600 mb-4 group-hover:scale-110 transition-transform duration-300">
-                    {category.icon}
-                  </div>
-                  <h3 className="font-semibold text-gray-900 group-hover:text-orange-600 transition-colors duration-300">
-                    {category.name}
-                  </h3>
-                </div>
-              ))}
-            </div>
-            <div className="mt-12 text-center animate-in slide-in-from-bottom duration-500 delay-500">
-              <Button
-                variant="outline"
-                className="border-2 border-orange-300 text-orange-600 hover:bg-orange-50 hover:border-orange-400 hover:text-orange-500 px-8 py-3 rounded-xl transition-all duration-300 hover:scale-115 cursor-pointer"
-              >
-                View All Categories
-              </Button>
-            </div>
-          </div>
-        </section>
-
-        {/* New Releases */}
-        <section id="new-releases" className="py-20 bg-white pl-5 lg:pl-30">
-          <div className="container px-4 md:px-6">
-            <div className="flex items-center justify-between mb-12 animate-in slide-in-from-top duration-500">
-              <h2 className="text-3xl font-bold text-gray-900">New Releases</h2>
-              <Link
-                href="#"
-                className="text-orange-500 hover:text-orange-600 flex items-center group transition-colors duration-300"
-              >
-                View all
-                <ChevronRight className="h-4 w-4 ml-1 group-hover:translate-x-1 transition-transform duration-300" />
-              </Link>
-            </div>
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-8">
-              {newReleases.map((book, index) => (
-                <div
-                  key={book.id}
-                  className="group relative animate-in slide-in-from-bottom duration-500"
-                  style={{ animationDelay: `${index * 100}ms` }}
-                >
-                  <div className="aspect-[2/3] overflow-hidden rounded-xl bg-gradient-to-br from-gray-100 to-gray-200 shadow-md group-hover:shadow-xl transition-all duration-500">
-                    <Image
-                      src={book.cover || "/placeholder.svg"}
-                      alt={book.title}
-                      width={200}
-                      height={300}
-                      className="object-cover w-full h-full transition-transform duration-500 group-hover:scale-110"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 transition-opacity duration-300"></div>
-                    <div className="absolute top-3 right-3 bg-orange-500 text-white text-xs px-2 py-1 rounded-full font-medium">
-                      New
-                    </div>
-                  </div>
-                  <div className="mt-4 space-y-2">
-                    <h3 className="font-semibold text-sm sm:text-base text-gray-900 group-hover:text-orange-800 transition-colors duration-300">
-                      {book.title}
-                    </h3>
-                    <p className="text-gray-500 text-xs sm:text-sm group-hover:text-orange-800">
-                      {book.author}
-                    </p>
-                  </div>
-                </div>
-              ))}
-            </div>
+                )}
+              </>
+            )}
           </div>
         </section>
 
@@ -502,32 +698,6 @@ export default function Home() {
             </div>
           </div>
         </section>
-
-        {/* Newsletter Section
-        <section className="py-16 bg-gradient-to-r from-orange-500 to-orange-600 text-white relative overflow-hidden">
-          <div className="absolute inset-0 bg-[url('data:image/svg+xml,%3Csvg%20width%3D%2240%22%20height%3D%2240%22%20viewBox%3D%220%200%2040%2040%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Cg%20fill%3D%22none%22%20fillRule%3D%22evenodd%22%3E%3Cg%20fill%3D%22%23ffffff%22%20fillOpacity%3D%220.1%22%3E%3Ccircle%20cx%3D%2220%22%20cy%3D%2220%22%20r%3D%221%22%2F%3E%3C%2Fg%3E%3C%2Fg%3E%3C%2Fsvg%3E')] opacity-50"></div>
-          <div className="container px-4 md:px-6 relative">
-            <div className="flex flex-col md:flex-row items-center justify-between gap-8 animate-in slide-in-from-bottom duration-500">
-              <div className="text-center md:text-left">
-                <h2 className="text-3xl font-bold mb-2">Stay Updated</h2>
-                <p className="text-orange-100 text-lg">
-                  Subscribe to our newsletter for the latest book releases and
-                  offers.
-                </p>
-              </div>
-              <div className="w-full md:w-auto flex flex-col sm:flex-row gap-4">
-                <Input
-                  type="email"
-                  placeholder="Your email address"
-                  className="bg-white/10 border-white/20 placeholder:text-orange-200 text-white backdrop-blur-sm h-12 px-4 rounded-xl focus:bg-white/20 transition-all duration-300"
-                />
-                <Button className="bg-white text-orange-600 hover:bg-gray-100 px-8 h-12 rounded-xl font-semibold transition-all duration-300 hover:scale-105 shadow-lg">
-                  Subscribe
-                </Button>
-              </div>
-            </div>
-          </div>
-        </section> */}
       </main>
 
       {/* Footer */}
