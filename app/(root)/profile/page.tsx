@@ -1,160 +1,165 @@
 "use client";
 
-import { useState } from "react";
+import { BookOpen, User, Edit, Save, X } from "lucide-react";
 import { useRouter } from "next/navigation";
-import Image from "next/image";
-import {
-  BookOpen,
-  User,
-  Mail,
-  Calendar,
-  Edit,
-  Save,
-  X,
-  Camera,
-  LogOut,
-  ChevronDown,
-  BookMarked,
-  Clock,
-  CheckCircle,
-  Star,
-  Trophy,
-  Target,
-  TrendingUp,
-  Settings,
-  Shield,
-  Bell,
-} from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Switch } from "@/components/ui/switch";
+import type * as React from "react";
+import { useState, useEffect } from "react";
+import SignOutButton from "@/components/sign-out-button";
+import { getCurrentUser } from "@/lib/actions/auth.action";
+import { getUserBooks } from "@/lib/firebase/books";
 import { toast } from "sonner";
 
-// User profile interface
+// User interface
 interface UserProfile {
   id: string;
   name: string;
   email: string;
-  avatar: string;
-  bio: string;
+  bio?: string;
   joinDate: string;
-  location: string;
-  favoriteGenres: string[];
-  readingGoal: number;
-  booksRead: number;
-  totalPages: number;
-  averageRating: number;
-  currentStreak: number;
-  longestStreak: number;
 }
 
-// Reading stats interface
-interface ReadingStats {
-  totalBooks: number;
+// Profile stats interface
+interface ProfileStats {
+  booksRead: number;
   currentlyReading: number;
   wantToRead: number;
-  completed: number;
-  averageRating: number;
-  totalPages: number;
-  thisMonth: number;
-  thisYear: number;
+  memberSince: string;
 }
 
-export default function ProfilePage() {
+const ProfilePage: React.FC = () => {
   const router = useRouter();
-  const [isEditing, setIsEditing] = useState(false);
-  const [profile, setProfile] = useState<UserProfile>({
-    id: "1",
-    name: "Alex Johnson",
-    email: "alex@example.com",
-    avatar: "/placeholder.svg?height=120&width=120",
-    bio: "Passionate reader who loves exploring different genres. Currently obsessed with sci-fi and fantasy novels.",
-    joinDate: "2023-01-15",
-    location: "San Francisco, CA",
-    favoriteGenres: ["Science Fiction", "Fantasy", "Mystery", "Biography"],
-    readingGoal: 50,
-    booksRead: 32,
-    totalPages: 8450,
-    averageRating: 4.2,
-    currentStreak: 15,
-    longestStreak: 28,
+  const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [stats, setStats] = useState<ProfileStats>({
+    booksRead: 0,
+    currentlyReading: 0,
+    wantToRead: 0,
+    memberSince: "2024",
   });
+  const [loading, setLoading] = useState(true);
+  const [isEditingBio, setIsEditingBio] = useState(false);
+  const [editedBio, setEditedBio] = useState("");
 
-  const [editedProfile, setEditedProfile] = useState<UserProfile>(profile);
-  const [stats, setStats] = useState<ReadingStats>({
-    totalBooks: 32,
-    currentlyReading: 3,
-    wantToRead: 15,
-    completed: 29,
-    averageRating: 4.2,
-    totalPages: 8450,
-    thisMonth: 4,
-    thisYear: 32,
-  });
+  // Load user profile and stats
+  useEffect(() => {
+    const loadProfileData = async () => {
+      try {
+        setLoading(true);
 
-  // Notification settings
-  const [notifications, setNotifications] = useState({
-    emailUpdates: true,
-    readingReminders: true,
-    bookRecommendations: false,
-    communityActivity: true,
-  });
+        // Get current user
+        const user = await getCurrentUser();
+        if (!user) {
+          router.push("/sign-in");
+          return;
+        }
 
-  // Handle profile edit
-  const handleEdit = () => {
-    setIsEditing(true);
-    setEditedProfile(profile);
+        // Set profile data
+        const userProfile: UserProfile = {
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          bio:
+            user.bio ||
+            "Passionate reader who loves exploring different genres.",
+          joinDate: user.joinDate || new Date().toISOString(),
+        };
+        setProfile(userProfile);
+        setEditedBio(userProfile.bio || "");
+
+        // Get user's books for stats
+        const booksResult = await getUserBooks();
+        if (booksResult.success) {
+          const books = booksResult.books;
+          const completedBooks = books.filter(
+            (book) => book.status === "completed"
+          ).length;
+          const currentlyReadingBooks = books.filter(
+            (book) => book.status === "reading"
+          ).length;
+          const wantToReadBooks = books.filter(
+            (book) => book.status === "want-to-read"
+          ).length;
+
+          setStats({
+            booksRead: completedBooks,
+            currentlyReading: currentlyReadingBooks,
+            wantToRead: wantToReadBooks,
+            memberSince: new Date(userProfile.joinDate)
+              .getFullYear()
+              .toString(),
+          });
+        }
+      } catch (error) {
+        console.error("Error loading profile:", error);
+        toast.error("Failed to load profile data");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadProfileData();
+  }, [router]);
+
+  // Handle bio editing
+  const handleEditBio = () => {
+    setIsEditingBio(true);
   };
 
-  const handleSave = () => {
-    setProfile(editedProfile);
-    setIsEditing(false);
-    toast.success("Profile updated successfully!");
+  const handleSaveBio = async () => {
+    try {
+      // In a real app, you would save this to your user database
+      // For now, we'll just update the local state
+      if (profile) {
+        setProfile({ ...profile, bio: editedBio });
+        setIsEditingBio(false);
+        toast.success("Bio updated successfully!");
+      }
+    } catch (error) {
+      console.error("Error saving bio:", error);
+      toast.error("Failed to update bio");
+    }
   };
 
-  const handleCancel = () => {
-    setEditedProfile(profile);
-    setIsEditing(false);
+  const handleCancelEdit = () => {
+    setEditedBio(profile?.bio || "");
+    setIsEditingBio(false);
   };
 
-  // Handle logout
-  const handleLogout = () => {
-    toast.success("Logged out successfully!");
-    router.push("/sign-in");
-  };
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-orange-50 via-white to-orange-100 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-8 h-8 border-4 border-orange-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading profile...</p>
+        </div>
+      </div>
+    );
+  }
 
-  // Calculate reading progress
-  const readingProgress = (profile.booksRead / profile.readingGoal) * 100;
+  if (!profile) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-orange-50 via-white to-orange-100 flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-gray-600">Profile not found</p>
+          <Button onClick={() => router.push("/sign-in")} className="mt-4">
+            Sign In
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-orange-50 via-white to-orange-100">
+    <div className="relative min-h-screen bg-gradient-to-br from-orange-50 via-white to-orange-100 text-orange-900">
       {/* Background pattern */}
-      <div className="absolute inset-0 bg-[url('data:image/svg+xml,%3Csvg%20width%3D%2260%22%20height%3D%2260%22%20viewBox%3D%220%200%2060%2060%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Cg%20fill%3D%22none%22%20fillRule%3D%22evenodd%22%3E%3Cg%20fill%3D%22%23f97316%22%20fillOpacity%3D%220.05%22%3E%3Ccircle%20cx%3D%2230%22%20cy%3D%2230%22%20r%3D%222%22%2F%3E%3C%2Fg%3E%3C%2Fg%3E%3C%2Fsvg%3E')] opacity-50 pointer-events-none"></div>
+      <div className="absolute inset-0 bg-[url('data:image/svg+xml,%3Csvg%20width%3D%2260%22%20height%3D%2260%22%20viewBox%3D%220%200%2060%2060%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Cg%20fill%3D%22none%22%20fillRule%3D%22evenodd%22%3E%3Cg%20fill%3D%22%23f97316%22%20fillOpacity%3D%220.05%22%3E%3Ccircle%20cx%3D%2230%22%20cy%3D%2230%22%20r%3D%222%22%2F%3E%3C%2Fg%3E%3C%2Fg%3E%3C%2Fsvg%3E')] opacity-50 pointer-events-none z-0"></div>
 
-      {/* Header */}
-      <header className="sticky top-0 z-50 w-full border-b bg-white/95 backdrop-blur-md shadow-sm animate-in slide-in-from-top duration-300">
+      <header className="sticky top-0 z-20 w-full border-b bg-white/95 backdrop-blur-md shadow-sm animate-in slide-in-from-top duration-300 pr-10">
         <div className="container flex h-16 items-center justify-between">
           <div className="flex items-center gap-2">
             <div
-              className="flex items-center group cursor-pointer"
+              className="flex items-center group cursor-pointer pl-10"
               onClick={() => router.push("/")}
             >
               <div className="p-2 bg-gradient-to-br from-orange-400 to-orange-600 rounded-xl group-hover:scale-110 transition-transform duration-300">
@@ -182,7 +187,7 @@ export default function ProfilePage() {
               My Books
               <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-orange-500 group-hover:w-full transition-all duration-300"></span>
             </button>
-            <button className="text-sm font-medium text-orange-600 relative group">
+            <button className="text-sm font-medium text-orange-600 relative group cursor-default">
               Profile
               <span className="absolute -bottom-1 left-0 w-full h-0.5 bg-orange-500 transition-all duration-300"></span>
             </button>
@@ -190,563 +195,112 @@ export default function ProfilePage() {
 
           {/* User menu */}
           <div className="flex items-center gap-4">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="ghost"
-                  className="flex items-center gap-2 hover:bg-orange-50 hover:text-orange-600"
-                >
-                  <div className="w-8 h-8 rounded-full overflow-hidden border-2 border-orange-200">
-                    <Image
-                      src={profile.avatar || "/placeholder.svg"}
-                      alt={profile.name}
-                      width={32}
-                      height={32}
-                      className="object-cover"
-                    />
-                  </div>
-                  <span className="hidden md:inline font-medium">
-                    {profile.name}
-                  </span>
-                  <ChevronDown className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56">
-                <DropdownMenuItem className="flex items-center gap-2">
-                  <User className="h-4 w-4" />
-                  <span>Profile</span>
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  className="flex items-center gap-2"
-                  onClick={() => router.push("/books")}
-                >
-                  <BookMarked className="h-4 w-4" />
-                  <span>My Books</span>
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  className="flex items-center gap-2 text-red-600"
-                  onClick={handleLogout}
-                >
-                  <LogOut className="h-4 w-4" />
-                  <span>Log out</span>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <div className="flex items-center gap-8">
+              <button
+                onClick={() => {
+                  router.push("/profile");
+                  console.log("Profile clicked");
+                }}
+                className="flex items-center gap-2 text-sm text-gray-700 hover:text-black transition cursor-pointer"
+              >
+                <User className="h-9 w-9 text-gray-700 hover:text-orange-500 transition-all duration-300 hover:scale-105 relative group" />
+              </button>
+              <div className="text-gray-700 hover:text-orange-500 transition-all duration-300 hover:scale-105">
+                <SignOutButton />
+              </div>
+            </div>
           </div>
         </div>
       </header>
 
-      <main className="container py-8">
-        {/* Profile Header */}
-        <div className="mb-8">
-          <Card className="border-orange-100 shadow-lg">
-            <CardContent className="p-8">
-              <div className="flex flex-col md:flex-row items-start md:items-center gap-6">
-                {/* Avatar */}
-                <div className="relative group">
-                  <div className="w-32 h-32 rounded-full overflow-hidden border-4 border-orange-200 shadow-lg">
-                    <Image
-                      src={profile.avatar || "/placeholder.svg"}
-                      alt={profile.name}
-                      width={128}
-                      height={128}
-                      className="object-cover w-full h-full"
-                    />
-                  </div>
-                  {isEditing && (
-                    <button className="absolute inset-0 bg-black/50 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                      <Camera className="h-6 w-6 text-white" />
-                    </button>
-                  )}
-                </div>
+      {/* Profile Main Content */}
+      <main className="relative z-10 flex flex-col items-center py-12 px-4 md:px-0 max-w-2xl mx-auto">
+        <div className="w-32 h-32 rounded-full border-4 border-orange-200 overflow-hidden shadow-lg mb-4">
+          <img
+            src="/placeholder.svg?height=128&width=128"
+            alt={profile.name}
+            className="object-cover w-full h-full"
+          />
+        </div>
+        <h2 className="text-3xl font-bold mb-2">{profile.name}</h2>
 
-                {/* Profile Info */}
-                <div className="flex-1">
-                  {isEditing ? (
-                    <div className="space-y-4">
-                      <div>
-                        <Label htmlFor="name">Name</Label>
-                        <Input
-                          id="name"
-                          value={editedProfile.name}
-                          onChange={(e) =>
-                            setEditedProfile({
-                              ...editedProfile,
-                              name: e.target.value,
-                            })
-                          }
-                          className="border-orange-200 focus:border-orange-400"
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor="bio">Bio</Label>
-                        <Textarea
-                          id="bio"
-                          value={editedProfile.bio}
-                          onChange={(e) =>
-                            setEditedProfile({
-                              ...editedProfile,
-                              bio: e.target.value,
-                            })
-                          }
-                          className="border-orange-200 focus:border-orange-400"
-                          rows={3}
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor="location">Location</Label>
-                        <Input
-                          id="location"
-                          value={editedProfile.location}
-                          onChange={(e) =>
-                            setEditedProfile({
-                              ...editedProfile,
-                              location: e.target.value,
-                            })
-                          }
-                          className="border-orange-200 focus:border-orange-400"
-                        />
-                      </div>
-                    </div>
-                  ) : (
-                    <div>
-                      <h1 className="text-3xl font-bold text-gray-900 mb-2">
-                        {profile.name}
-                      </h1>
-                      <p className="text-gray-600 mb-4">{profile.bio}</p>
-                      <div className="flex flex-wrap gap-4 text-sm text-gray-500">
-                        <div className="flex items-center gap-1">
-                          <Mail className="h-4 w-4" />
-                          <span>{profile.email}</span>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <Calendar className="h-4 w-4" />
-                          <span>
-                            Joined{" "}
-                            {new Date(profile.joinDate).toLocaleDateString()}
-                          </span>
-                        </div>
-                        {profile.location && (
-                          <div className="flex items-center gap-1">
-                            <User className="h-4 w-4" />
-                            <span>{profile.location}</span>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {/* Action Buttons */}
-                <div className="flex gap-2">
-                  {isEditing ? (
-                    <>
-                      <Button
-                        onClick={handleSave}
-                        className="bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700"
-                      >
-                        <Save className="h-4 w-4 mr-2" />
-                        Save
-                      </Button>
-                      <Button
-                        variant="outline"
-                        onClick={handleCancel}
-                        className="border-orange-200"
-                      >
-                        <X className="h-4 w-4 mr-2" />
-                        Cancel
-                      </Button>
-                    </>
-                  ) : (
-                    <Button
-                      onClick={handleEdit}
-                      variant="outline"
-                      className="border-orange-200 text-orange-600 hover:bg-orange-50"
-                    >
-                      <Edit className="h-4 w-4 mr-2" />
-                      Edit Profile
-                    </Button>
-                  )}
-                </div>
+        {/* Bio Section */}
+        <div className="w-full max-w-md mb-4">
+          {isEditingBio ? (
+            <div className="space-y-3">
+              <Textarea
+                value={editedBio}
+                onChange={(e) => setEditedBio(e.target.value)}
+                className="w-full text-center border-orange-200 focus:border-orange-400 resize-none"
+                rows={3}
+                placeholder="Tell us about yourself..."
+              />
+              <div className="flex justify-center gap-2">
+                <Button
+                  onClick={handleSaveBio}
+                  size="sm"
+                  className="bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700"
+                >
+                  <Save className="h-4 w-4 mr-1" />
+                  Save
+                </Button>
+                <Button
+                  onClick={handleCancelEdit}
+                  size="sm"
+                  variant="outline"
+                  className="border-orange-200"
+                >
+                  <X className="h-4 w-4 mr-1" />
+                  Cancel
+                </Button>
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          ) : (
+            <div className="text-center">
+              <p className="text-orange-700 text-lg mb-2">{profile.bio}</p>
+              <Button
+                onClick={handleEditBio}
+                size="sm"
+                variant="ghost"
+                className="text-orange-600 hover:text-orange-700 hover:bg-orange-50"
+              >
+                <Edit className="h-4 w-4 mr-1" />
+                Edit Bio
+              </Button>
+            </div>
+          )}
         </div>
 
-        {/* Tabs */}
-        <Tabs defaultValue="overview" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4 bg-white border border-orange-100">
-            <TabsTrigger
-              value="overview"
-              className="data-[state=active]:bg-orange-500 data-[state=active]:text-white"
-            >
-              Overview
-            </TabsTrigger>
-            <TabsTrigger
-              value="stats"
-              className="data-[state=active]:bg-orange-500 data-[state=active]:text-white"
-            >
-              Statistics
-            </TabsTrigger>
-            <TabsTrigger
-              value="achievements"
-              className="data-[state=active]:bg-orange-500 data-[state=active]:text-white"
-            >
-              Achievements
-            </TabsTrigger>
-            <TabsTrigger
-              value="settings"
-              className="data-[state=active]:bg-orange-500 data-[state=active]:text-white"
-            >
-              Settings
-            </TabsTrigger>
-          </TabsList>
-
-          {/* Overview Tab */}
-          <TabsContent value="overview" className="space-y-6">
-            {/* Reading Goal Progress */}
-            <Card className="border-orange-100">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Target className="h-5 w-5 text-orange-500" />
-                  Reading Goal Progress
-                </CardTitle>
-                <CardDescription>
-                  You've read {profile.booksRead} out of {profile.readingGoal}{" "}
-                  books this year
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <Progress
-                    value={readingProgress}
-                    className="h-3 bg-orange-100"
-                  />
-                  <div className="flex justify-between text-sm text-gray-600">
-                    <span>{profile.booksRead} books read</span>
-                    <span>{Math.round(readingProgress)}% complete</span>
-                    <span>
-                      {profile.readingGoal - profile.booksRead} books remaining
-                    </span>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Quick Stats */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <Card className="border-orange-100">
-                <CardContent className="p-4 flex items-center">
-                  <div className="p-3 bg-orange-100 rounded-lg mr-4">
-                    <BookMarked className="h-6 w-6 text-orange-600" />
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-500">Total Books</p>
-                    <p className="text-2xl font-bold text-gray-900">
-                      {stats.totalBooks}
-                    </p>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="border-orange-100">
-                <CardContent className="p-4 flex items-center">
-                  <div className="p-3 bg-orange-100 rounded-lg mr-4">
-                    <Clock className="h-6 w-6 text-orange-600" />
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-500">Currently Reading</p>
-                    <p className="text-2xl font-bold text-gray-900">
-                      {stats.currentlyReading}
-                    </p>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="border-orange-100">
-                <CardContent className="p-4 flex items-center">
-                  <div className="p-3 bg-orange-100 rounded-lg mr-4">
-                    <CheckCircle className="h-6 w-6 text-orange-600" />
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-500">Completed</p>
-                    <p className="text-2xl font-bold text-gray-900">
-                      {stats.completed}
-                    </p>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="border-orange-100">
-                <CardContent className="p-4 flex items-center">
-                  <div className="p-3 bg-orange-100 rounded-lg mr-4">
-                    <Star className="h-6 w-6 text-orange-600" />
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-500">Avg Rating</p>
-                    <p className="text-2xl font-bold text-gray-900">
-                      {profile.averageRating}
-                    </p>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Favorite Genres */}
-            <Card className="border-orange-100">
-              <CardHeader>
-                <CardTitle>Favorite Genres</CardTitle>
-                <CardDescription>
-                  Your most read book categories
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="flex flex-wrap gap-2">
-                  {profile.favoriteGenres.map((genre, index) => (
-                    <Badge
-                      key={index}
-                      variant="outline"
-                      className="bg-orange-50 text-orange-700 border-orange-200 hover:bg-orange-100"
-                    >
-                      {genre}
-                    </Badge>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {/* Statistics Tab */}
-          <TabsContent value="stats" className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <Card className="border-orange-100">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <TrendingUp className="h-5 w-5 text-orange-500" />
-                    Reading Statistics
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Total Pages Read</span>
-                    <span className="font-semibold">
-                      {profile.totalPages.toLocaleString()}
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Books This Month</span>
-                    <span className="font-semibold">{stats.thisMonth}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Books This Year</span>
-                    <span className="font-semibold">{stats.thisYear}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Average Rating</span>
-                    <span className="font-semibold">
-                      {profile.averageRating}/5
-                    </span>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="border-orange-100">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Trophy className="h-5 w-5 text-orange-500" />
-                    Reading Streaks
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Current Streak</span>
-                    <span className="font-semibold text-orange-600">
-                      {profile.currentStreak} days
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Longest Streak</span>
-                    <span className="font-semibold">
-                      {profile.longestStreak} days
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Want to Read</span>
-                    <span className="font-semibold">{stats.wantToRead}</span>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          </TabsContent>
-
-          {/* Achievements Tab */}
-          <TabsContent value="achievements" className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {/* Sample achievements */}
-              <Card className="border-orange-100 bg-gradient-to-br from-orange-50 to-white">
-                <CardContent className="p-6 text-center">
-                  <div className="w-16 h-16 bg-orange-500 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <Trophy className="h-8 w-8 text-white" />
-                  </div>
-                  <h3 className="font-semibold text-gray-900 mb-2">
-                    First Book
-                  </h3>
-                  <p className="text-sm text-gray-600">
-                    Completed your first book
-                  </p>
-                </CardContent>
-              </Card>
-
-              <Card className="border-orange-100 bg-gradient-to-br from-orange-50 to-white">
-                <CardContent className="p-6 text-center">
-                  <div className="w-16 h-16 bg-orange-500 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <BookMarked className="h-8 w-8 text-white" />
-                  </div>
-                  <h3 className="font-semibold text-gray-900 mb-2">Bookworm</h3>
-                  <p className="text-sm text-gray-600">Read 10 books</p>
-                </CardContent>
-              </Card>
-
-              <Card className="border-orange-100 bg-gradient-to-br from-orange-50 to-white">
-                <CardContent className="p-6 text-center">
-                  <div className="w-16 h-16 bg-orange-500 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <Target className="h-8 w-8 text-white" />
-                  </div>
-                  <h3 className="font-semibold text-gray-900 mb-2">
-                    Goal Crusher
-                  </h3>
-                  <p className="text-sm text-gray-600">Reached reading goal</p>
-                </CardContent>
-              </Card>
-            </div>
-          </TabsContent>
-
-          {/* Settings Tab */}
-          <TabsContent value="settings" className="space-y-6">
-            <Card className="border-orange-100">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Bell className="h-5 w-5 text-orange-500" />
-                  Notification Settings
-                </CardTitle>
-                <CardDescription>
-                  Manage your notification preferences
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <Label htmlFor="email-updates">Email Updates</Label>
-                    <p className="text-sm text-gray-500">
-                      Receive updates about new features
-                    </p>
-                  </div>
-                  <Switch
-                    id="email-updates"
-                    checked={notifications.emailUpdates}
-                    onCheckedChange={(checked: any) =>
-                      setNotifications({
-                        ...notifications,
-                        emailUpdates: checked,
-                      })
-                    }
-                  />
-                </div>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <Label htmlFor="reading-reminders">Reading Reminders</Label>
-                    <p className="text-sm text-gray-500">
-                      Daily reminders to read
-                    </p>
-                  </div>
-                  <Switch
-                    id="reading-reminders"
-                    checked={notifications.readingReminders}
-                    onCheckedChange={(checked: any) =>
-                      setNotifications({
-                        ...notifications,
-                        readingReminders: checked,
-                      })
-                    }
-                  />
-                </div>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <Label htmlFor="book-recommendations">
-                      Book Recommendations
-                    </Label>
-                    <p className="text-sm text-gray-500">
-                      Personalized book suggestions
-                    </p>
-                  </div>
-                  <Switch
-                    id="book-recommendations"
-                    checked={notifications.bookRecommendations}
-                    onCheckedChange={(checked: any) =>
-                      setNotifications({
-                        ...notifications,
-                        bookRecommendations: checked,
-                      })
-                    }
-                  />
-                </div>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <Label htmlFor="community-activity">
-                      Community Activity
-                    </Label>
-                    <p className="text-sm text-gray-500">
-                      Updates from the BookVerse community
-                    </p>
-                  </div>
-                  <Switch
-                    id="community-activity"
-                    checked={notifications.communityActivity}
-                    onCheckedChange={(checked: any) =>
-                      setNotifications({
-                        ...notifications,
-                        communityActivity: checked,
-                      })
-                    }
-                  />
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="border-orange-100">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Shield className="h-5 w-5 text-orange-500" />
-                  Privacy & Security
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <Button
-                  variant="outline"
-                  className="w-full border-orange-200 text-orange-600 hover:bg-orange-50"
-                >
-                  <Settings className="h-4 w-4 mr-2" />
-                  Change Password
-                </Button>
-                <Button
-                  variant="outline"
-                  className="w-full border-orange-200 text-orange-600 hover:bg-orange-50"
-                >
-                  <Shield className="h-4 w-4 mr-2" />
-                  Privacy Settings
-                </Button>
-                <Button
-                  variant="outline"
-                  className="w-full border-red-200 text-red-600 hover:bg-red-50"
-                >
-                  <X className="h-4 w-4 mr-2" />
-                  Delete Account
-                </Button>
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
+        {/* Stats Section */}
+        <div className="flex flex-wrap justify-center gap-6 bg-white/90 border border-orange-100 rounded-lg px-8 py-4 shadow mt-2 mb-8">
+          <div className="flex flex-col items-center">
+            <span className="text-2xl font-bold text-orange-600">
+              {stats.booksRead}
+            </span>
+            <span className="text-sm text-gray-500">Books Read</span>
+          </div>
+          <div className="flex flex-col items-center">
+            <span className="text-2xl font-bold text-orange-600">
+              {stats.currentlyReading}
+            </span>
+            <span className="text-sm text-gray-500">Currently Reading</span>
+          </div>
+          <div className="flex flex-col items-center">
+            <span className="text-2xl font-bold text-orange-600">
+              {stats.wantToRead}
+            </span>
+            <span className="text-sm text-gray-500">Want to Read</span>
+          </div>
+          <div className="flex flex-col items-center">
+            <span className="text-2xl font-bold text-orange-600">
+              {stats.memberSince}
+            </span>
+            <span className="text-sm text-gray-500">Member Since</span>
+          </div>
+        </div>
       </main>
     </div>
   );
-}
+};
+
+export default ProfilePage;

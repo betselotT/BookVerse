@@ -11,8 +11,10 @@ interface User {
   id: string
   name: string
   email: string
+  bio?: string
   profileURL?: string
   resumeURL?: string
+  joinDate?: string
 }
 
 interface SignUpParams {
@@ -61,6 +63,8 @@ export async function signUp(params: SignUpParams) {
     await db.collection("users").doc(uid).set({
       name,
       email,
+      bio: "Passionate reader who loves exploring different genres.",
+      joinDate: new Date().toISOString(),
       // profileURL,
       // resumeURL,
     })
@@ -146,4 +150,28 @@ export async function getCurrentUser(): Promise<User | null> {
 export async function isAuthenticated() {
   const user = await getCurrentUser()
   return !!user
+}
+
+// Update user bio
+export async function updateUserBio(bio: string) {
+  const cookieStore = await cookies()
+  const sessionCookie = cookieStore.get("session")?.value
+
+  if (!sessionCookie) {
+    return { success: false, message: "Not authenticated" }
+  }
+
+  try {
+    const decodedClaims = await auth.verifySessionCookie(sessionCookie, true)
+
+    await db.collection("users").doc(decodedClaims.uid).update({
+      bio,
+      updatedAt: new Date().toISOString(),
+    })
+
+    return { success: true, message: "Bio updated successfully" }
+  } catch (error) {
+    console.error("Error updating bio:", error)
+    return { success: false, message: "Failed to update bio" }
+  }
 }
