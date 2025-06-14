@@ -17,10 +17,12 @@ import {
   BookText,
   ChevronDown,
   User,
+  Loader2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Label } from "@/components/ui/label";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -45,93 +47,64 @@ import {
 } from "@/components/ui/select";
 import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
+import {
+  type Book,
+  type ReadingStatus,
+  addBook,
+  getUserBooks,
+  updateBookStatus,
+  updateBookProgress,
+  deleteBook as deleteBookFromDB,
+} from "@/lib/firebase/books";
 import SignOutButton from "@/components/sign-out-button";
-
-// Book reading status types
-type ReadingStatus = "want-to-read" | "reading" | "completed";
-
-// Book interface
-interface Book {
-  id: string;
-  title: string;
-  author: string;
-  cover: string;
-  status: ReadingStatus;
-  progress: number;
-  rating?: number;
-  dateAdded: string;
-  categories?: string[];
-  pageCount?: number;
-}
 
 export default function MyBooks() {
   const router = useRouter();
   const [searchTerm, setSearchTerm] = useState("");
   const [activeTab, setActiveTab] = useState<ReadingStatus | "all">("all");
   const [books, setBooks] = useState<Book[]>([]);
+  const [loading, setLoading] = useState(true);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [selectedBook, setSelectedBook] = useState<Book | null>(null);
 
-  // Mock user data
+  // Add book form state
+  const [newBookData, setNewBookData] = useState({
+    title: "",
+    author: "",
+    status: "want-to-read" as ReadingStatus,
+    pageCount: "",
+    categories: "",
+  });
+
+  // Mock user data (you can replace this with actual user data from auth)
   const user = {
     name: "Alex Johnson",
     email: "alex@example.com",
     avatar: "/placeholder.svg?height=40&width=40",
   };
 
-  // Load books from localStorage on component mount
+  // Load books from Firebase on component mount
   useEffect(() => {
-    const savedBooks = localStorage.getItem("userBooks");
-    if (savedBooks) {
-      setBooks(JSON.parse(savedBooks));
-    } else {
-      // Sample data for first-time users
-      const sampleBooks: Book[] = [
-        {
-          id: "1",
-          title: "The Silent Echo",
-          author: "J.R. Rain",
-          cover: "/The_Silent_Echo.png",
-          status: "reading",
-          progress: 45,
-          dateAdded: new Date().toISOString(),
-          categories: ["Fiction", "Mystery"],
-          pageCount: 320,
-        },
-        {
-          id: "2",
-          title: "Beyond The Horizon",
-          author: "K.J. Cloutier",
-          cover: "/Beyond_the_Horizon.png",
-          status: "want-to-read",
-          progress: 0,
-          dateAdded: new Date().toISOString(),
-          categories: ["Fiction", "Adventure"],
-          pageCount: 280,
-        },
-        {
-          id: "3",
-          title: "Whispers in the Dark",
-          author: "Conner Lindell",
-          cover: "/Whispers_in_the_Dark.png",
-          status: "completed",
-          progress: 100,
-          rating: 4.5,
-          dateAdded: new Date().toISOString(),
-          categories: ["Fiction", "Horror"],
-          pageCount: 350,
-        },
-      ];
-      setBooks(sampleBooks);
-      localStorage.setItem("userBooks", JSON.stringify(sampleBooks));
-    }
+    loadBooks();
   }, []);
 
-  // Save books to localStorage whenever they change
-  useEffect(() => {
-    localStorage.setItem("userBooks", JSON.stringify(books));
-  }, [books]);
+  const loadBooks = async () => {
+    setLoading(true);
+    try {
+      const result = await getUserBooks();
+      if (result.success) {
+        setBooks(result.books);
+      } else {
+        toast.error("Failed to load books: " + result.error);
+      }
+    } catch (error) {
+      toast.error("Failed to load books");
+      console.error("Error loading books:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Filter books based on active tab and search term
   const filteredBooks = books.filter((book) => {
@@ -143,64 +116,133 @@ export default function MyBooks() {
   });
 
   // Add a new book
-  const addBook = (newBook: Omit<Book, "id" | "dateAdded">) => {
-    const book: Book = {
-      ...newBook,
-      id: Date.now().toString(),
-      dateAdded: new Date().toISOString(),
-    };
-    setBooks((prev) => [...prev, book]);
-    toast.success("Book added to your list!");
-    setIsAddDialogOpen(false);
+  const handleAddBook = async () => {
+    if (!newBookData.title.trim() || !newBookData.author.trim()) {
+      toast.error("Please fill in title and author");
+      return;
+    }
+
+    try {
+      const bookData = {
+        title: newBookData.title.trim(),
+        author: newBookData.author.trim(),
+        cover: "/placeholder.svg?height=300&width=200",
+        status: newBookData.status,
+        progress: newBookData.status === "completed" ? 100 : 0,
+        categories: newBookData.categories
+          ? newBookData.categories.split(",").map((c) => c.trim())
+          : [],
+        pageCount: newBookData.pageCount
+          ? Number.parseInt(newBookData.pageCount)
+          : undefined,
+      };
+
+      const result = await addBook(bookData);
+
+      if (result.success) {
+        toast.success("Book added to your list!");
+        setIsAddDialogOpen(false);
+        setNewBookData({
+          title: "",
+          author: "",
+          status: "want-to-read",
+          pageCount: "",
+          categories: "",
+        });
+        // Reload books to get the updated list
+        loadBooks();
+      } else {
+        toast.error("Failed to add book: " + result.error);
+      }
+    } catch (error) {
+      toast.error("Failed to add book");
+      console.error("Error adding book:", error);
+    }
   };
 
   // Update book status
-  const updateBookStatus = (id: string, status: ReadingStatus) => {
-    setBooks((prev) =>
-      prev.map((book) =>
-        book.id === id
-          ? {
-              ...book,
-              status,
-              progress:
-                status === "completed"
-                  ? 100
-                  : status === "want-to-read"
-                  ? 0
-                  : book.progress,
-            }
-          : book
-      )
-    );
-    toast.success("Reading status updated!");
+  const handleUpdateBookStatus = async (id: string, status: ReadingStatus) => {
+    try {
+      const result = await updateBookStatus(id, status);
+
+      if (result.success) {
+        toast.success("Reading status updated!");
+        // Update local state
+        setBooks((prev) =>
+          prev.map((book) =>
+            book.id === id
+              ? {
+                  ...book,
+                  status,
+                  progress:
+                    status === "completed"
+                      ? 100
+                      : status === "want-to-read"
+                      ? 0
+                      : book.progress,
+                }
+              : book
+          )
+        );
+      } else {
+        toast.error("Failed to update status: " + result.error);
+      }
+    } catch (error) {
+      toast.error("Failed to update status");
+      console.error("Error updating status:", error);
+    }
   };
 
   // Update book progress
-  const updateBookProgress = (id: string, progress: number) => {
-    setBooks((prev) =>
-      prev.map((book) =>
-        book.id === id
-          ? {
-              ...book,
-              progress,
-              status:
-                progress === 100
-                  ? "completed"
-                  : progress > 0
-                  ? "reading"
-                  : book.status,
-            }
-          : book
-      )
-    );
-    toast.success("Reading progress updated!");
-    setIsEditDialogOpen(false);
+  const handleUpdateBookProgress = async (id: string, progress: number) => {
+    try {
+      const result = await updateBookProgress(id, progress);
+
+      if (result.success) {
+        toast.success("Reading progress updated!");
+        setIsEditDialogOpen(false);
+        // Update local state
+        setBooks((prev) =>
+          prev.map((book) =>
+            book.id === id
+              ? {
+                  ...book,
+                  progress,
+                  status:
+                    progress === 100
+                      ? "completed"
+                      : progress > 0
+                      ? "reading"
+                      : book.status,
+                }
+              : book
+          )
+        );
+      } else {
+        toast.error("Failed to update progress: " + result.error);
+      }
+    } catch (error) {
+      toast.error("Failed to update progress");
+      console.error("Error updating progress:", error);
+    }
   };
 
   // Delete a book
-  const deleteBook = (id: string) => {
-    setBooks((prev) => prev.filter((book) => book.id !== id));
-    toast.success("Book removed from your list!");
+  const handleDeleteBook = async (id: string) => {
+    try {
+      const result = await deleteBookFromDB(id);
+
+      if (result.success) {
+        toast.success("Book removed from your list!");
+        // Update local state
+        setBooks((prev) => prev.filter((book) => book.id !== id));
+      } else {
+        toast.error("Failed to delete book: " + result.error);
+      }
+    } catch (error) {
+      toast.error("Failed to delete book");
+      console.error("Error deleting book:", error);
+    }
   };
 
   // Handle logout
@@ -223,16 +265,27 @@ export default function MyBooks() {
         books.filter((b) => b.rating).length || 0,
   };
 
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-orange-50 via-white to-orange-100 flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="h-12 w-12 text-orange-500 animate-spin mx-auto mb-4" />
+          <p className="text-gray-600">Loading your books...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-orange-50 via-white to-orange-100">
       {/* Background pattern */}
       <div className="absolute inset-0 bg-[url('data:image/svg+xml,%3Csvg%20width%3D%2260%22%20height%3D%2260%22%20viewBox%3D%220%200%2060%2060%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Cg%20fill%3D%22none%22%20fillRule%3D%22evenodd%22%3E%3Cg%20fill%3D%22%23f97316%22%20fillOpacity%3D%220.05%22%3E%3Ccircle%20cx%3D%2230%22%20cy%3D%2230%22%20r%3D%222%22%2F%3E%3C%2Fg%3E%3C%2Fg%3E%3C%2Fsvg%3E')] opacity-50 pointer-events-none"></div>
 
       {/* Header */}
-      <header className="sticky top-0 z-50 w-full border-b bg-white/95 backdrop-blur-md shadow-sm animate-in slide-in-from-top duration-300">
+      <header className="sticky top-0 z-50 w-full border-b bg-white/95 backdrop-blur-md shadow-sm animate-in slide-in-from-top duration-300 pr-10">
         <div className="container flex h-16 items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="flex items-center group">
+            <div className="flex items-center group pl-10">
               <div className="p-2 bg-gradient-to-br from-orange-400 to-orange-600 rounded-xl group-hover:scale-110 transition-transform duration-300">
                 <BookOpen className="h-5 w-5 text-white" />
               </div>
@@ -247,27 +300,20 @@ export default function MyBooks() {
 
           {/* Navigation */}
           <nav className="hidden md:flex items-center gap-8">
-            <a
-              href="/books"
+            <button
+              onClick={() => router.push("/books")}
               className="text-sm font-medium text-orange-600 relative group"
             >
               My Books
               <span className="absolute -bottom-1 left-0 w-full h-0.5 bg-orange-500 transition-all duration-300"></span>
-            </a>
-            <a
-              href="/discover"
+            </button>
+            <button
+              onClick={() => router.push("/")}
               className="text-sm font-medium text-gray-700 hover:text-orange-500 transition-all duration-300 hover:scale-105 relative group"
             >
               Discover
               <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-orange-500 group-hover:w-full transition-all duration-300"></span>
-            </a>
-            <a
-              href="/community"
-              className="text-sm font-medium text-gray-700 hover:text-orange-500 transition-all duration-300 hover:scale-105 relative group"
-            >
-              Community
-              <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-orange-500 group-hover:w-full transition-all duration-300"></span>
-            </a>
+            </button>
           </nav>
 
           {/* User menu */}
@@ -290,7 +336,7 @@ export default function MyBooks() {
         </div>
       </header>
 
-      <main className="container py-8">
+      <main className="container py-8 pl-5">
         {/* Page title and actions */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
           <div>
@@ -317,30 +363,43 @@ export default function MyBooks() {
               </DialogHeader>
               <div className="grid gap-4 py-4">
                 <div className="grid grid-cols-4 items-center gap-4">
-                  <label htmlFor="title" className="text-right">
-                    Title
-                  </label>
+                  <Label htmlFor="title" className="text-right">
+                    Title *
+                  </Label>
                   <Input
                     id="title"
                     className="col-span-3"
                     placeholder="Book title"
+                    value={newBookData.title}
+                    onChange={(e) =>
+                      setNewBookData({ ...newBookData, title: e.target.value })
+                    }
                   />
                 </div>
                 <div className="grid grid-cols-4 items-center gap-4">
-                  <label htmlFor="author" className="text-right">
-                    Author
-                  </label>
+                  <Label htmlFor="author" className="text-right">
+                    Author *
+                  </Label>
                   <Input
                     id="author"
                     className="col-span-3"
                     placeholder="Author name"
+                    value={newBookData.author}
+                    onChange={(e) =>
+                      setNewBookData({ ...newBookData, author: e.target.value })
+                    }
                   />
                 </div>
                 <div className="grid grid-cols-4 items-center gap-4">
-                  <label htmlFor="status" className="text-right">
+                  <Label htmlFor="status" className="text-right">
                     Status
-                  </label>
-                  <Select defaultValue="want-to-read">
+                  </Label>
+                  <Select
+                    value={newBookData.status}
+                    onValueChange={(value: ReadingStatus) =>
+                      setNewBookData({ ...newBookData, status: value })
+                    }
+                  >
                     <SelectTrigger className="col-span-3">
                       <SelectValue placeholder="Select status" />
                     </SelectTrigger>
@@ -350,6 +409,41 @@ export default function MyBooks() {
                       <SelectItem value="completed">Completed</SelectItem>
                     </SelectContent>
                   </Select>
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="pageCount" className="text-right">
+                    Pages
+                  </Label>
+                  <Input
+                    id="pageCount"
+                    className="col-span-3"
+                    placeholder="Number of pages"
+                    type="number"
+                    value={newBookData.pageCount}
+                    onChange={(e) =>
+                      setNewBookData({
+                        ...newBookData,
+                        pageCount: e.target.value,
+                      })
+                    }
+                  />
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="categories" className="text-right">
+                    Categories
+                  </Label>
+                  <Input
+                    id="categories"
+                    className="col-span-3"
+                    placeholder="Fiction, Mystery, etc. (comma separated)"
+                    value={newBookData.categories}
+                    onChange={(e) =>
+                      setNewBookData({
+                        ...newBookData,
+                        categories: e.target.value,
+                      })
+                    }
+                  />
                 </div>
               </div>
               <DialogFooter>
@@ -361,18 +455,7 @@ export default function MyBooks() {
                 </Button>
                 <Button
                   className="bg-gradient-to-r from-orange-500 to-orange-600"
-                  onClick={() => {
-                    // In a real app, you'd get values from form inputs
-                    addBook({
-                      title: "New Book Title",
-                      author: "Author Name",
-                      cover: "/placeholder.svg?height=300&width=200",
-                      status: "want-to-read",
-                      progress: 0,
-                      categories: ["Fiction"],
-                      pageCount: 250,
-                    });
-                  }}
+                  onClick={handleAddBook}
                 >
                   Add Book
                 </Button>
@@ -541,7 +624,7 @@ export default function MyBooks() {
                       </div>
                       <Progress
                         value={book.progress}
-                        className="h-1.5 bg-gray-100 [&>div]:bg-orange-500"
+                        className="h-1.5 bg-gray-100"
                       />
                     </div>
 
@@ -569,9 +652,7 @@ export default function MyBooks() {
                 <div className="flex border-t border-gray-100">
                   <Dialog
                     open={isEditDialogOpen && selectedBook?.id === book.id}
-                    onOpenChange={(
-                      open: boolean | ((prevState: boolean) => boolean)
-                    ) => {
+                    onOpenChange={(open) => {
                       setIsEditDialogOpen(open);
                       if (!open) setSelectedBook(null);
                     }}
@@ -629,7 +710,7 @@ export default function MyBooks() {
                           className="bg-gradient-to-r from-orange-500 to-orange-600"
                           onClick={() => {
                             if (selectedBook) {
-                              updateBookProgress(
+                              handleUpdateBookProgress(
                                 selectedBook.id,
                                 selectedBook.progress
                               );
@@ -655,18 +736,22 @@ export default function MyBooks() {
                     <DropdownMenuContent>
                       <DropdownMenuItem
                         onClick={() =>
-                          updateBookStatus(book.id, "want-to-read")
+                          handleUpdateBookStatus(book.id, "want-to-read")
                         }
                       >
                         Want to Read
                       </DropdownMenuItem>
                       <DropdownMenuItem
-                        onClick={() => updateBookStatus(book.id, "reading")}
+                        onClick={() =>
+                          handleUpdateBookStatus(book.id, "reading")
+                        }
                       >
                         Currently Reading
                       </DropdownMenuItem>
                       <DropdownMenuItem
-                        onClick={() => updateBookStatus(book.id, "completed")}
+                        onClick={() =>
+                          handleUpdateBookStatus(book.id, "completed")
+                        }
                       >
                         Completed
                       </DropdownMenuItem>
@@ -676,7 +761,7 @@ export default function MyBooks() {
                   <Button
                     variant="ghost"
                     className="flex-1 py-2 rounded-none text-red-600 hover:bg-red-50 hover:text-red-700"
-                    onClick={() => deleteBook(book.id)}
+                    onClick={() => handleDeleteBook(book.id)}
                   >
                     <Trash2 className="h-4 w-4 mr-2" />
                     Remove
